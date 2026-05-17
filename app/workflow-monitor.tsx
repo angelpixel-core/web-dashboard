@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { WorkflowSnapshot } from "@/lib/workflow";
+import { resolveWorkflowStatus, statusLabel } from "@/lib/workflow-status";
 
 type Props = {
   initialSnapshot: WorkflowSnapshot;
@@ -95,6 +96,12 @@ export default function WorkflowMonitor({ initialSnapshot }: Props) {
         <span className="meta">Last refresh: {fmt(snapshot.fetched_at)}</span>
       </section>
 
+      {snapshot.degraded ? (
+        <section className="alert" role="status" aria-live="polite">
+          <strong>Data degraded:</strong> {snapshot.message || "One or more upstream requests failed. Showing latest available data."}
+        </section>
+      ) : null}
+
       <section className="grid">
         <article className="card">
           <h2>Accounts ({snapshot.accounts.length})</h2>
@@ -126,14 +133,20 @@ export default function WorkflowMonitor({ initialSnapshot }: Props) {
           <h2>Recent Activity ({snapshot.activity.length})</h2>
           <ul>
             {snapshot.activity.slice(0, 10).map((item) => (
-              <li key={`${item.reference_type}-${item.reference_id}-${item.correlation_id}`}>
-                <strong>
-                  {item.reference_type}:{item.reference_id}
-                </strong>
-                <span>entries={item.entry_count}</span>
-                <span>{item.workflow_status || "posted"}</span>
-                <span>corr={item.correlation_id}</span>
-              </li>
+              (() => {
+                const status = resolveWorkflowStatus(item);
+
+                return (
+                  <li key={`${item.reference_type}-${item.reference_id}-${item.correlation_id}`}>
+                    <strong>
+                      {item.reference_type}:{item.reference_id}
+                    </strong>
+                    <span>entries={item.entry_count}</span>
+                    <span className={`status status-${status}`}>{statusLabel(status)}</span>
+                    <span>corr={item.correlation_id}</span>
+                  </li>
+                );
+              })()
             ))}
           </ul>
         </article>
