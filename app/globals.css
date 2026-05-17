@@ -1,0 +1,79 @@
+:root {
+  --bg: #f3f1ea;
+  --surface: #fffdf8;
+  --ink: #1f2c2e;
+  --muted: #556669;
+  --accent: #1c7a6b;
+  --border: #d9d2c5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body), sans-serif;
+  color: var(--ink);
+  background: radial-gradient(circle at top right, #e8f4ef, var(--bg) 35%);
+}
+
+.shell {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+}
+
+.hero h1 {
+  margin: 0.2rem 0;
+  font-family: var(--font-heading), sans-serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.eyebrow {
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+}
+
+.subcopy {
+  margin-top: 0.5rem;
+  color: var(--muted);
+  max-width: 70ch;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 1rem;
+}
+
+.card h2 {
+  margin-top: 0;
+  font-family: var(--font-heading), sans-serif;
+}
+
+.card p {
+  color: var(--muted);
+  min-height: 4rem;
+}
+
+.chip {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: #d8efe9;
+  color: #15574d;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
