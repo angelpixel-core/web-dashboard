@@ -51,6 +51,18 @@ body {
   margin-top: 1.5rem;
 }
 
+.status-row {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin: 1rem 0;
+}
+
+.meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -66,6 +78,29 @@ body {
 .card p {
   color: var(--muted);
   min-height: 4rem;
+}
+
+.card ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.card li {
+  display: grid;
+  gap: 0.2rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5rem;
+  background: #fff;
+}
+
+.card li span {
+  color: var(--muted);
+  font-size: 0.82rem;
 }
 
 .chip {
