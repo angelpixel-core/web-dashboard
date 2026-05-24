@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { WorkflowSnapshot } from "@/lib/workflow";
 import { resolveWorkflowStatus, statusLabel } from "@/lib/workflow-status";
 
@@ -12,6 +12,22 @@ type StreamMode = "connecting" | "sse" | "fallback";
 
 const FALLBACK_POLL_MS = 12000;
 
+function logDashboardEvent(params: {
+  event: "dashboard.sse.connected" | "dashboard.sse.error" | "dashboard.transport.fallback";
+  status: "completed" | "failed" | "fallback";
+  correlation_id: string;
+  reference_type?: string;
+  reference_id?: string;
+}): void {
+  const payload = {
+    service: "web-dashboard",
+    ...params,
+    timestamp: new Date().toISOString()
+  };
+
+  console.info(JSON.stringify(payload));
+}
+
 function fmt(ts: string) {
   return new Date(ts).toLocaleTimeString();
 }
@@ -19,6 +35,12 @@ function fmt(ts: string) {
 export default function WorkflowMonitor({ initialSnapshot }: Props) {
   const [snapshot, setSnapshot] = useState<WorkflowSnapshot>(initialSnapshot);
   const [streamMode, setStreamMode] = useState<StreamMode>("connecting");
+  const [transportCorrelationId] = useState(() => `dashboard-transport-${crypto.randomUUID()}`);
+  const activityRef = useRef(snapshot.activity);
+
+  useEffect(() => {
+    activityRef.current = snapshot.activity;
+  }, [snapshot.activity]);
 
   useEffect(() => {
     let pollTimer: ReturnType<typeof setInterval> | undefined;
@@ -26,6 +48,13 @@ export default function WorkflowMonitor({ initialSnapshot }: Props) {
 
     const startFallbackPolling = () => {
       setStreamMode("fallback");
+      logDashboardEvent({
+        event: "dashboard.transport.fallback",
+        status: "fallback",
+        correlation_id: transportCorrelationId,
+        reference_type: activityRef.current[0]?.reference_type,
+        reference_id: activityRef.current[0]?.reference_id
+      });
       if (pollTimer) return;
       pollTimer = setInterval(async () => {
         const response = await fetch("/api/workflow/snapshot", { cache: "no-store" });
@@ -39,6 +68,13 @@ export default function WorkflowMonitor({ initialSnapshot }: Props) {
 
     stream.onopen = () => {
       setStreamMode("sse");
+      logDashboardEvent({
+        event: "dashboard.sse.connected",
+        status: "completed",
+        correlation_id: transportCorrelationId,
+        reference_type: activityRef.current[0]?.reference_type,
+        reference_id: activityRef.current[0]?.reference_id
+      });
       if (pollTimer) {
         clearInterval(pollTimer);
         pollTimer = undefined;
@@ -64,6 +100,13 @@ export default function WorkflowMonitor({ initialSnapshot }: Props) {
     };
 
     stream.onerror = () => {
+      logDashboardEvent({
+        event: "dashboard.sse.error",
+        status: "failed",
+        correlation_id: transportCorrelationId,
+        reference_type: activityRef.current[0]?.reference_type,
+        reference_id: activityRef.current[0]?.reference_id
+      });
       startFallbackPolling();
     };
 
@@ -72,7 +115,7 @@ export default function WorkflowMonitor({ initialSnapshot }: Props) {
       stream.close();
       if (pollTimer) clearInterval(pollTimer);
     };
-  }, []);
+  }, [transportCorrelationId]);
 
   const streamLabel = useMemo(() => {
     if (streamMode === "sse") return "SSE connected";
