@@ -1,3 +1,5 @@
+import { withTraceSpan } from "@/lib/trace-span";
+
 export type Account = {
   id: string;
   account_type: string;
@@ -30,18 +32,30 @@ export type WorkflowSnapshot = {
 const GATEWAY_BASE_URL = process.env.API_GATEWAY_BASE_URL || "http://127.0.0.1:3001";
 
 async function gatewayJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${GATEWAY_BASE_URL}${path}`, {
-    headers: {
-      "X-Correlation-ID": `web-dashboard-${crypto.randomUUID()}`
+  const correlationId = `web-dashboard-${crypto.randomUUID()}`;
+
+  return withTraceSpan(
+    {
+      workflow_step: "dashboard_snapshot",
+      correlation_id: correlationId,
+      reference_type: "gateway_path",
+      reference_id: path
     },
-    cache: "no-store"
-  });
+    async () => {
+      const response = await fetch(`${GATEWAY_BASE_URL}${path}`, {
+        headers: {
+          "X-Correlation-ID": correlationId
+        },
+        cache: "no-store"
+      });
 
-  if (!response.ok) {
-    throw new Error(`gateway request failed: ${path} status=${response.status}`);
-  }
+      if (!response.ok) {
+        throw new Error(`gateway request failed: ${path} status=${response.status}`);
+      }
 
-  return (await response.json()) as T;
+      return (await response.json()) as T;
+    }
+  );
 }
 
 export async function loadWorkflowSnapshot(): Promise<WorkflowSnapshot> {

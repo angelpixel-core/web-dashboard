@@ -28,6 +28,25 @@ function logDashboardEvent(params: {
   console.info(JSON.stringify(payload));
 }
 
+function logTraceSpan(params: {
+  status: "completed" | "failed";
+  correlation_id: string;
+  workflow_step: string;
+  reference_type?: string;
+  reference_id?: string;
+  duration_ms: number;
+  error_code?: string;
+}): void {
+  console.info(
+    JSON.stringify({
+      service: "web-dashboard",
+      event: "trace.span",
+      ...params,
+      timestamp: new Date().toISOString()
+    })
+  );
+}
+
 function fmt(ts: string) {
   return new Date(ts).toLocaleTimeString();
 }
@@ -82,6 +101,7 @@ export default function WorkflowMonitor({ initialSnapshot }: Props) {
     };
 
     stream.onmessage = (event) => {
+      const startedAt = Date.now();
       try {
         const payload = JSON.parse(event.data) as Partial<WorkflowSnapshot>;
         if (payload.accounts || payload.balances || payload.activity) {
@@ -93,8 +113,26 @@ export default function WorkflowMonitor({ initialSnapshot }: Props) {
             degraded: payload.degraded ?? prev.degraded,
             message: payload.message ?? prev.message
           }));
+
+          logTraceSpan({
+            status: "completed",
+            correlation_id: transportCorrelationId,
+            workflow_step: "dashboard_stream_update",
+            reference_type: payload.activity?.[0]?.reference_type,
+            reference_id: payload.activity?.[0]?.reference_id,
+            duration_ms: Date.now() - startedAt
+          });
         }
       } catch {
+        logTraceSpan({
+          status: "failed",
+          correlation_id: transportCorrelationId,
+          workflow_step: "dashboard_stream_update",
+          reference_type: activityRef.current[0]?.reference_type,
+          reference_id: activityRef.current[0]?.reference_id,
+          duration_ms: Date.now() - startedAt,
+          error_code: "invalid_stream_payload"
+        });
         startFallbackPolling();
       }
     };
