@@ -1,4 +1,5 @@
 import { withTraceSpan } from "@/lib/trace-span";
+import { observeMetric } from "@/lib/metrics";
 
 export type Account = {
   id: string;
@@ -59,6 +60,7 @@ async function gatewayJson<T>(path: string): Promise<T> {
 }
 
 export async function loadWorkflowSnapshot(): Promise<WorkflowSnapshot> {
+  const startedAt = Date.now();
   const errors: string[] = [];
 
   const accounts = await gatewayJson<{ accounts?: Account[] }>("/api/v1/accounts")
@@ -79,7 +81,7 @@ export async function loadWorkflowSnapshot(): Promise<WorkflowSnapshot> {
     .then((r) => r.activity || [])
     .catch(() => []);
 
-  return {
+  const snapshot = {
     accounts,
     balances,
     activity,
@@ -87,4 +89,10 @@ export async function loadWorkflowSnapshot(): Promise<WorkflowSnapshot> {
     degraded: errors.length > 0,
     message: errors.length > 0 ? errors.join("; ") : undefined
   };
+
+  observeMetric("dashboard_snapshot_latency_ms", Date.now() - startedAt, {
+    status: snapshot.degraded ? "degraded" : "completed"
+  });
+
+  return snapshot;
 }

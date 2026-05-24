@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { incrementMetric, setMetric } from "@/lib/metrics";
 import type { WorkflowSnapshot } from "@/lib/workflow";
 import { resolveWorkflowStatus, statusLabel } from "@/lib/workflow-status";
 
@@ -67,6 +68,8 @@ export default function WorkflowMonitor({ initialSnapshot }: Props) {
 
     const startFallbackPolling = () => {
       setStreamMode("fallback");
+      incrementMetric("dashboard_transport_mode_total", 1, { mode: "fallback" });
+      setMetric("dashboard_sse_connected_clients", 0);
       logDashboardEvent({
         event: "dashboard.transport.fallback",
         status: "fallback",
@@ -87,6 +90,8 @@ export default function WorkflowMonitor({ initialSnapshot }: Props) {
 
     stream.onopen = () => {
       setStreamMode("sse");
+      incrementMetric("dashboard_transport_mode_total", 1, { mode: "sse" });
+      setMetric("dashboard_sse_connected_clients", 1);
       logDashboardEvent({
         event: "dashboard.sse.connected",
         status: "completed",
@@ -151,6 +156,7 @@ export default function WorkflowMonitor({ initialSnapshot }: Props) {
     return () => {
       closed = true;
       stream.close();
+      setMetric("dashboard_sse_connected_clients", 0);
       if (pollTimer) clearInterval(pollTimer);
     };
   }, [transportCorrelationId]);
